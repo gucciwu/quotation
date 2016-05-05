@@ -16,18 +16,21 @@
             //Data preparing
             //get data
             var tickJsonURL, kJsonURL, tsTimeList,
-                    tsDataList, candleTimeList, candleDataList, jsonData, candleDataJson;
+                    tsDataList, candleTimeList, candleDataList, jsonData, candleDataJson,
+                    stockNumber, stockName;
 
             tsTimeList = [];
             tsDataList = [];
             candleTimeList = [];
             candleDataList = [];
 
-            tickJsonURL = 'http://localhost:63342/quotation/000001_ticks.json';
-            kJsonURL = 'http://localhost:63342/quotation/000001_k.json';
+            stockNumber = '600490';
+            stockName = '鹏欣资源';
+
+            tickJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_ticks.json';
+            kJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_k.json';
 
             //Candle Chart
-            //Time Sharing Chart
             $.getJSON(kJsonURL,
                     function(data){
 
@@ -63,25 +66,34 @@
                 tsTimeList: tsTimeList,
                 tsDataList: tsDataList,
                 candleTimeList: candleTimeList,
-                candleDataList: candleDataList
+                candleDataList: candleDataList,
+                stockNumber: stockNumber,
+                stockName: stockName
             }
         }
+
         function showCharts() {
             var stockData = getData();
 
-            alert(stockData);
+            alert(stockData.candleTimeList);
 
             // Candle Chart
             var myCandleChart = echarts.init(document.getElementById('candlechart'));
             var kOption = {
                 title: {
-                    text: '上证指数',
+                    text: stockData.stockName,
                     left: 'center'
                 },
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: {
                         type: 'line'
+                    },
+                    formatter: function (params) {
+                        var res = params[0].seriesName + ' ' + params[0].name;
+                        res += '<br/>  开盘 : ' + params[0].value[0] + '  最高 : ' + params[0].value[3];
+                        res += '<br/>  收盘 : ' + params[0].value[1] + '  最低 : ' + params[0].value[2];
+                        return res;
                     }
                 },
                 grid: {
@@ -96,7 +108,7 @@
                     boundaryGap : false,
                     axisLine: {onZero: false},
                     splitLine: {show: false},
-                    splitNumber: 20,
+                    splitNumber: 40,
                     min: 'dataMin',
                     max: 'dataMax'
                 },
@@ -122,7 +134,7 @@
                 ],
                 series: [
                     {
-                        name: '上证指数',
+                        name: stockData.stockName,
                         type: 'candlestick',
                         data: stockData.candleDataList
                     }
@@ -152,6 +164,20 @@
                         type : 'value',
                         boundaryGap: [0, '100%']
                     },
+                ],
+                dataZoom: [
+                    {
+                        type: 'inside',
+                        start: 50,
+                        end: 100
+                    },
+                    {
+                        show: true,
+                        type: 'slider',
+                        y: '90%',
+                        start: 50,
+                        end: 100
+                    }
                 ],
                 series : [
                     {
@@ -190,6 +216,7 @@
     <div id="candlechart"></div>
     <div id="timesharing"></div>
     <script type="application/javascript">
+
         $(document).ready(function () {
             showCharts();
         });
