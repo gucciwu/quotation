@@ -19,10 +19,10 @@
                     tsDataList, candleTimeList, candleDataList, jsonData, candleDataJson,
                     stockNumber, stockName;
 
-            tsTimeList = [];
-            tsDataList = [];
-            candleTimeList = [];
-            candleDataList = [];
+            tsTimeList = new Array();
+            tsDataList = new Array();
+            candleTimeList = new Array();
+            candleDataList = new Array();
 
             stockNumber = '600490';
             stockName = '鹏欣资源';
@@ -32,50 +32,46 @@
 
             //Candle Chart
             $.getJSON(kJsonURL,
-                    function(data){
+                function(data){
 
-                        jsonData = eval(data);
-                        candleTimeList = jsonData.index;
-                        candleDataJson = jsonData.data;
+                    jsonData = eval(data);
+                    candleTimeList = jsonData.index;
+                    candleDataJson = jsonData.data;
 
-                        for(var i=0;i<candleDataJson.length-1;i++){
-                            candleDataList.push([candleDataJson[i][0],
-                                candleDataJson[i][2],
-                                candleDataJson[i][3],
-                                candleDataJson[i][1]]);
-                        }
-
+                    for(var i=0;i<candleDataJson.length-1;i++){
+                        candleDataList.push([candleDataJson[i][0],
+                            candleDataJson[i][2],
+                            candleDataJson[i][3],
+                            candleDataJson[i][1]]);
                     }
+                }
             );
-
 
             //Time Sharing Chart
             $.getJSON(tickJsonURL,
-                    function(data){
-
-                        jsonData = eval(data);
-
-                        for(var i=0;i<jsonData.length-1;i++){
-                            tsDataList.push(jsonData[i].price);
-                            tsTimeList.push(jsonData[i].time);
-                        }
+                function(data){
+                    jsonData = eval(data);
+                    for(var i=0;i<jsonData.length-1;i++){
+                        tsDataList.push(jsonData[i].price);
+                        tsTimeList.push(jsonData[i].time);
                     }
+                }
             );
 
             return {
-                tsTimeList: tsTimeList,
-                tsDataList: tsDataList,
-                candleTimeList: candleTimeList,
-                candleDataList: candleDataList,
-                stockNumber: stockNumber,
-                stockName: stockName
+                'tsTime': tsTimeList.reverse(),
+                'tsData': tsDataList.reverse(),
+                'candleTime': candleTimeList.reverse(),
+                'candleData': candleDataList.reverse(),
+                'stockNumber': stockNumber,
+                'stockName': stockName
             }
         }
 
         function showCharts() {
             var stockData = getData();
 
-            alert(stockData.candleTimeList);
+            alert(stockData.candleTime);
 
             // Candle Chart
             var myCandleChart = echarts.init(document.getElementById('candlechart'));
@@ -103,7 +99,7 @@
                 },
                 xAxis: {
                     type: 'category',
-                    data: stockData.candleTimeList,
+                    data: stockData.candleTime,
                     scale: true,
                     boundaryGap : false,
                     axisLine: {onZero: false},
@@ -136,7 +132,22 @@
                     {
                         name: stockData.stockName,
                         type: 'candlestick',
-                        data: stockData.candleDataList
+                        itemStyle: {
+                            normal: {
+                                color: 'red',           // 阳线填充颜色
+                                color0: 'lightgreen',   // 阴线填充颜色
+                                lineStyle: {
+                                    width: 2,
+                                    color: 'orange',    // 阳线边框颜色
+                                    color0: 'green'     // 阴线边框颜色
+                                }
+                            },
+                            emphasis: {
+                                color: 'black',         // 阳线填充颜色
+                                color0: 'white'         // 阴线填充颜色
+                            }
+                        },
+                        data: stockData.candleData
                     }
                 ]
             };
@@ -148,40 +159,28 @@
                 tooltip : {
                     trigger: 'axis'
                 },
-                legend: {
-                    data:['上证指数']
-                },
+
                 toolbox: {},
                 xAxis : [
                     {
                         type : 'category',
                         boundaryGap : false,
-                        data : stockData.tsTimeList
+                        data : stockData.tsTime
                     }
                 ],
-                yAxis : [
-                    {
-                        type : 'value',
-                        boundaryGap: [0, '100%']
+                yAxis: {
+                    scale: true,
+                    splitArea: {
+                        show: true
                     },
-                ],
-                dataZoom: [
-                    {
-                        type: 'inside',
-                        start: 50,
-                        end: 100
-                    },
-                    {
-                        show: true,
-                        type: 'slider',
-                        y: '90%',
-                        start: 50,
-                        end: 100
-                    }
-                ],
+                    boundaryGap: [0, '100%'],
+                    min: 7.32,
+                    max: 7.54,
+                    splitNumber: 8
+                },
                 series : [
                     {
-                        name:'上证指数',
+                        name: stockData.stockName,
                         type:'line',
                         smooth:true,
                         symbol: 'none',
@@ -202,7 +201,7 @@
                                 }])
                             }
                         },
-                        data: stockData.tsDataList
+                        data: stockData.tsData
                     }
                 ]
             };
