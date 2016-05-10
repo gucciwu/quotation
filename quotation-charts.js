@@ -87,16 +87,19 @@ function kChart(option){
             {
                 name: 'MA5',
                 type: 'line',
+                symbol: 'none',
                 data: option.ma5
             },
             {
                 name: 'MA10',
                 type: 'line',
+                symbol: 'none',
                 data: option.ma10
             },
             {
                 name: 'MA20',
                 type: 'line',
+                symbol: 'none',
                 data: option.ma20
             }
         ]
