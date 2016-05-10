@@ -31,6 +31,9 @@ function kChart(option){
                 var res = params[0].seriesName + ' ' + params[0].name;
                 res += '<br/>  开盘 : ' + params[0].value[0] + '  最高 : ' + params[0].value[3];
                 res += '<br/>  收盘 : ' + params[0].value[1] + '  最低 : ' + params[0].value[2];
+                res += '<br/>  MA5 : ' + params[1].value;
+                res += '<br/>  MA10 : ' + params[2].value;
+                res += '<br/>  MA20 : ' + params[3].value;
                 return res;
             }
         },
@@ -57,7 +60,7 @@ function kChart(option){
         dataZoom: {
             y: '88%',
             show: true,
-            start: 50,
+            start: 70,
             end: 100
         },
         series: [
@@ -66,17 +69,17 @@ function kChart(option){
                 type: 'candlestick',
                 itemStyle: {
                     normal: {
-                        color: 'red',           // 阳线填充颜色
-                        color0: 'lightgreen',   // 阴线填充颜色
+                        color: 'red',           // Masculine line fill color
+                        color0: 'lightgreen',   // Negative line fill color
                         lineStyle: {
                             width: 2,
-                            color: 'orange',    // 阳线边框颜色
-                            color0: 'green'     // 阴线边框颜色
+                            color: 'orange',    // Masculine line border color
+                            color0: 'green'     // Negative line border color
                         }
                     },
                     emphasis: {
-                        color: 'black',         // 阳线填充颜色
-                        color0: 'white'         // 阴线填充颜色
+                        color: 'black',         // Masculine line fill color on focus
+                        color0: 'white'         // Negative line fill color on focus
                     }
                 },
                 data: option.data
@@ -99,20 +102,17 @@ function kChart(option){
         ]
     };
 
-    var myCandleChart = echarts.init(document.getElementById(option.elementID));
-    myCandleChart.setOption(kOption);
-
     var vOption = {
         tooltip: {
             trigger: 'axis',
-            showDelay: 0             // 显示延迟，添加显示延迟可以避免频繁切换，单位ms
+            showDelay: 0
         },
         toolbox: {
             show: false
         },
         dataZoom: {
             show: false,
-            start: 50,
+            start: 70,
             end: 100
         },
         grid: {
@@ -156,6 +156,8 @@ function kChart(option){
         ]
     };
 
+    var myCandleChart = echarts.init(document.getElementById(option.elementID));
+    myCandleChart.setOption(kOption);
     var myVolumeChart = echarts.init(document.getElementById(option.volumeElementID));
     myVolumeChart.setOption(vOption);
 
