@@ -4,221 +4,309 @@
     <meta charset="UTF-8">
     <title>Quotation</title>
     <style type="text/css">
-        #candlechart, #timesharing{
-            height: 300px;
-            width: 1024px;
+        #candlechart{
+            height:250px;
+            margin-bottom:1px;
+            padding-bottom:0;
+            border-bottom-width:0
+        }
+
+        #volume{
+            height:125px;
+            margin-bottom:1px;
+            padding:1px 10px;
+            border-width:0 1px;
+        }
+
+        #container{
+            width: 1000px;
+            height: 600px;
         }
     </style>
     <script src="jquery-2.2.3.js"></script>
-    <script src="echarts.min.js"></script>
+</head>
+
+
+<body>
+    <div id="container">
+        <div id="candlechart"></div>
+        <div id="volume"></div>
+        <div id="timesharing"></div>
+    </div>
+
+
     <script type="application/javascript">
-        function getData(){
-            //Data preparing
-            //get data
-            var tickJsonURL, kJsonURL, tsTimeList,
-                    tsDataList, candleTimeList, candleDataList, jsonData, candleDataJson,
-                    stockNumber, stockName;
+        $(document).ready(function () {
+            showCharts();
+        });
+    </script>
+</body>
+<script src="echarts.min.js"></script>
+<script type="application/javascript">
+    var tsTimeList, tsDataList, candleTimeList, candleDataList, candleVolumeList, stockName, stockNumber,
+            price_max, price_min;
 
-            tsTimeList = new Array();
-            tsDataList = new Array();
-            candleTimeList = new Array();
-            candleDataList = new Array();
+    tsTimeList = new Array();
+    tsDataList = new Array();
+    candleTimeList = new Array();
+    candleDataList = new Array();
+    candleVolumeList = new Array();
 
-            stockNumber = '600490';
-            stockName = '鹏欣资源';
+    stockNumber = '600490';
+    stockName = '鹏欣资源';
+    pre_close = 7.13;
 
-            tickJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_ticks.json';
-            kJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_k.json';
+    price_max = Math.ceil(pre_close * 1.1 * 100) / 100;
+    price_min = Math.floor(pre_close * 0.9 * 100) / 100;
 
-            //Candle Chart
-            $.getJSON(kJsonURL,
+    function getData(){
+        //Data preparing
+        //get data
+        var tickJsonURL, kJsonURL, jsonData, candleDataJson;
+
+
+        tickJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_ticks.json';
+        kJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_k.json';
+
+        //Candle Chart
+        $.getJSON(kJsonURL,
                 function(data){
 
                     jsonData = eval(data);
                     candleTimeList = jsonData.index;
                     candleDataJson = jsonData.data;
 
-                    for(var i=0;i<candleDataJson.length-1;i++){
+                    for(var i=0;i<candleDataJson.length;i++){
                         candleDataList.push([candleDataJson[i][0],
                             candleDataJson[i][2],
                             candleDataJson[i][3],
                             candleDataJson[i][1]]);
+                        candleVolumeList.push(candleDataJson[i][4]);
                     }
                 }
-            );
+        );
 
-            //Time Sharing Chart
-            $.getJSON(tickJsonURL,
+        //Time Sharing Chart
+        $.getJSON(tickJsonURL,
                 function(data){
                     jsonData = eval(data);
-                    for(var i=0;i<jsonData.length-1;i++){
+                    for(var i=0;i<jsonData.length;i++){
                         tsDataList.push(jsonData[i].price);
                         tsTimeList.push(jsonData[i].time);
                     }
                 }
-            );
+        );
 
-            return {
-                'tsTime': tsTimeList.reverse(),
-                'tsData': tsDataList.reverse(),
-                'candleTime': candleTimeList.reverse(),
-                'candleData': candleDataList.reverse(),
-                'stockNumber': stockNumber,
-                'stockName': stockName
-            }
-        }
+//        return {
+//            'tsTime': tsTimeList.reverse(),
+//            'tsData': tsDataList.reverse(),
+//            'candleTime': candleTimeList.reverse(),
+//            'candleData': candleDataList.reverse(),
+//            'stockNumber': stockNumber,
+//            'stockName': stockName
+//        }
+    }
 
-        function showCharts() {
-            var stockData = getData();
+    function showCharts() {
+        getData();
 
-            alert(stockData.candleTime);
+        alert(candleTimeList);
 
-            // Candle Chart
-            var myCandleChart = echarts.init(document.getElementById('candlechart'));
-            var kOption = {
-                title: {
-                    text: stockData.stockName,
-                    left: 'center'
+        // Candle Chart
+        var kOption = {
+            title: {
+                text: stockName,
+                left: 'left'
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'line'
                 },
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: {
-                        type: 'line'
-                    },
-                    formatter: function (params) {
-                        var res = params[0].seriesName + ' ' + params[0].name;
-                        res += '<br/>  开盘 : ' + params[0].value[0] + '  最高 : ' + params[0].value[3];
-                        res += '<br/>  收盘 : ' + params[0].value[1] + '  最低 : ' + params[0].value[2];
-                        return res;
-                    }
-                },
-                grid: {
-                    left: '10%',
-                    right: '10%',
-                    bottom: '15%'
-                },
-                xAxis: {
-                    type: 'category',
-                    data: stockData.candleTime,
-                    scale: true,
-                    boundaryGap : false,
-                    axisLine: {onZero: false},
-                    splitLine: {show: false},
-                    splitNumber: 40,
-                    min: 'dataMin',
-                    max: 'dataMax'
-                },
-                yAxis: {
-                    scale: true,
-                    splitArea: {
-                        show: true
-                    }
-                },
-                dataZoom: [
-                    {
-                        type: 'inside',
-                        start: 50,
-                        end: 100
-                    },
-                    {
-                        show: true,
-                        type: 'slider',
-                        y: '90%',
-                        start: 50,
-                        end: 100
-                    }
-                ],
-                series: [
-                    {
-                        name: stockData.stockName,
-                        type: 'candlestick',
-                        itemStyle: {
-                            normal: {
-                                color: 'red',           // 阳线填充颜色
-                                color0: 'lightgreen',   // 阴线填充颜色
-                                lineStyle: {
-                                    width: 2,
-                                    color: 'orange',    // 阳线边框颜色
-                                    color0: 'green'     // 阴线边框颜色
-                                }
-                            },
-                            emphasis: {
-                                color: 'black',         // 阳线填充颜色
-                                color0: 'white'         // 阴线填充颜色
+                formatter: function (params) {
+                    var res = params[0].seriesName + ' ' + params[0].name;
+                    res += '<br/>  开盘 : ' + params[0].value[0] + '  最高 : ' + params[0].value[3];
+                    res += '<br/>  收盘 : ' + params[0].value[1] + '  最低 : ' + params[0].value[2];
+                    return res;
+                }
+            },
+            grid: {
+                x:80,
+                y:40,
+                x2:20,
+                y2:50
+            },
+            xAxis: {
+                type: 'category',
+                data: candleTimeList.reverse(),
+                scale: true,
+                boundaryGap : false,
+                axisLine: {onZero: false},
+                splitLine: {show: false}
+            },
+            yAxis: {
+                scale: true,
+                splitArea: {
+                    show: true
+                }
+            },
+            dataZoom : {
+                y: '88%',
+                show : true,
+                start : 50,
+                end : 100
+            },
+            series: [
+                {
+                    name: stockName,
+                    type: 'candlestick',
+                    itemStyle: {
+                        normal: {
+                            color: 'red',           // 阳线填充颜色
+                            color0: 'lightgreen',   // 阴线填充颜色
+                            lineStyle: {
+                                width: 2,
+                                color: 'orange',    // 阳线边框颜色
+                                color0: 'green'     // 阴线边框颜色
                             }
                         },
-                        data: stockData.candleData
-                    }
-                ]
-            };
-            myCandleChart.setOption(kOption);
-
-            //Time sharing chart
-            var myTimeSharingChart = echarts.init(document.getElementById('timesharing'));
-            var timeSharingOption = {
-                tooltip : {
-                    trigger: 'axis'
-                },
-
-                toolbox: {},
-                xAxis : [
-                    {
-                        type : 'category',
-                        boundaryGap : false,
-                        data : stockData.tsTime
-                    }
-                ],
-                yAxis: {
-                    scale: true,
-                    splitArea: {
-                        show: true
+                        emphasis: {
+                            color: 'black',         // 阳线填充颜色
+                            color0: 'white'         // 阴线填充颜色
+                        }
                     },
-                    boundaryGap: [0, '100%'],
-                    min: 7.32,
-                    max: 7.54,
-                    splitNumber: 8
-                },
-                series : [
-                    {
-                        name: stockData.stockName,
-                        type:'line',
-                        smooth:true,
-                        symbol: 'none',
-                        sampling: 'average',
-                        itemStyle: {
-                            normal: {
-                                color: 'rgb(255, 70, 131)'
-                            }
-                        },
-                        areaStyle: {
-                            normal: {
-                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
-                                    offset: 0,
-                                    color: 'rgb(255, 158, 68)'
-                                }, {
-                                    offset: 1,
-                                    color: 'rgb(255, 70, 131)'
-                                }])
-                            }
-                        },
-                        data: stockData.tsData
-                    }
-                ]
-            };
-            myTimeSharingChart.setOption(timeSharingOption);
-        }
-    </script>
-</head>
+                    data: candleDataList.reverse()
+                }
+            ]
+        };
+        var myCandleChart = echarts.init(document.getElementById('candlechart'));
+        myCandleChart.setOption(kOption);
 
+        var vOption = {
+            tooltip : {
+                trigger: 'axis',
+                showDelay: 0             // 显示延迟，添加显示延迟可以避免频繁切换，单位ms
+            },
+            toolbox: {
+                show : false
 
-<body>
-    <div id="candlechart"></div>
-    <div id="timesharing"></div>
-    <script type="application/javascript">
+            },
+            dataZoom : {
+                show : false,
+                start : 50,
+                end : 100
+            },
+            grid: {
+                x: 70,
+                y: 10,
+                x2:6,
+                y2:30
+            },
+            xAxis : [
+                {
+                    type : 'category',
+                    position:'top',
+                    boundaryGap : true,
+                    axisLabel:{show:false},
+                    axisTick: {onGap:false},
+                    splitLine: {show:false},
+                    data : candleTimeList
+                }
+            ],
+            yAxis : [
+                {
+                    type : 'value',
+                    scale:true,
+                    splitNumber:2,
+                    boundaryGap: [0, 0.05],
+                    axisLabel: {
+                        formatter: function (v) {
+                            return Math.round(v/10000) + ' 万'
+                        }
+                    },
+                    splitArea : {show : true}
+                }
+            ],
+            series : [
+                {
+                    name:stockName,
+                    type:'bar',
+                    symbol: 'none',
+                    data:candleVolumeList.reverse()
+                }
+            ]
+        };
+        var myVolumeChart = echarts.init(document.getElementById('volume'));
+        myVolumeChart.setOption(vOption);
 
-        $(document).ready(function () {
-            showCharts();
-        });
-    </script>
-</body>
+        myCandleChart.group = 'kv_group';
+        myVolumeChart.group = 'kv_group';
+
+        echarts.connect('kv_group');
+
+        //Time sharing chart
+//        var myTimeSharingChart = echarts.init(document.getElementById('timesharing'));
+//        var timeSharingOption = {
+//            tooltip : {
+//                trigger: 'axis'
+//            },
+//
+//            toolbox: {},
+//            xAxis : [
+//                {
+//                    boundaryGap : false,
+//                    data : tsTimeList.reverse(),
+//                    splitNumber: 4
+//                }
+//            ],
+//            yAxis: [{
+//                scale: true,
+//                splitArea: {
+//                    show: true
+//                },
+//                boundaryGap: [0, '100%'],
+//                min: price_min,
+//                max: price_max,
+//                splitNumber: 8
+//            },
+//            {
+//                axisLabel: {
+//                    formatter: function (val) {
+//                        return (val - pre_close) / 100 + '%';
+//                    }
+//                },
+//                min: price_min,
+//                max: price_max
+//            }
+//            ],
+//            series : [
+//                {
+//                    name: stockName,
+//                    type:'line',
+//                    smooth:true,
+//                    symbol: 'none',
+//                    sampling: 'average',
+//                    itemStyle: {
+//                        normal: {
+//                            color: 'rgb(255, 70, 131)'
+//                        }
+//                    },
+//                    areaStyle: {
+//                        normal: {
+//                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+//                                offset: 0,
+//                                color: 'rgb(255, 158, 68)'
+//                            }, {
+//                                offset: 1,
+//                                color: 'rgb(255, 70, 131)'
+//                            }])
+//                        }
+//                    },
+//                    data: tsDataList.reverse()
+//                }
+//            ]
+//        };
+//        myTimeSharingChart.setOption(timeSharingOption);
+    }
+</script>
 </html>
