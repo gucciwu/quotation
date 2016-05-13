@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quotation</title>
+    <style type="text/css">
+        #timesharing{
+            width: 1000px;
+            height: 400px;
+        }
+    </style>
+    <script src="jquery-2.2.3.js"></script>
+</head>
+
+
+<body>
+<div id="container">
+    <div id="timesharing"></div>
+</div>
+
+
+<script type="application/javascript">
+//    $(document).ready(function () {
+//        showCharts();
+//    });
+</script>
+</body>
+<script src="echarts.min.js"></script>
+<script type="application/javascript">
+    var tsTimeList, tsDataList, stockName, stockCode,
+            price_max, price_min;
+
+    tsTimeList = new Array();
+    tsDataList = new Array();
+
+    stockCode = '600490';
+    stockName = '鹏欣资源';
+    pre_close = 6.71;
+
+    price_max = Math.ceil(pre_close * 1.1 * 100) / 100;
+    price_min = Math.floor(pre_close * 0.9 * 100) / 100;
+
+    function getData(){
+        //Data preparing
+        //get data
+        var tickJsonURL, jsonData;
+
+        tickJsonURL = 'http://localhost:63342/quotation/' + stockCode + '_ticks.json';
+
+        //Time Sharing Chart
+        $.getJSON(tickJsonURL,
+            function(data){
+                jsonData = eval(data);
+                for(var i=0;i<jsonData.length;i++){
+                    tsDataList.push(jsonData[i].price);
+                    tsTimeList.push(jsonData[i].time);
+                }
+            }
+        );
+    }
+
+    function showCharts() {
+        getData();
+
+        alert(tsTimeList);
+
+        //Time sharing chart
+        var myTimeSharingChart = echarts.init(document.getElementById('timesharing'));
+        var timeSharingOption = {
+            tooltip : {
+                trigger: 'axis'
+            },
+
+            toolbox: {},
+            xAxis : [
+                {
+                    boundaryGap : false,
+                    data : tsTimeList.reverse(),
+                    splitNumber: 4
+                }
+            ],
+            yAxis: [{
+                scale: true,
+                splitArea: {
+                    show: true
+                },
+                boundaryGap: ['10%', '10%'],
+                splitNumber: 8
+            }
+            ],
+            series : [
+                {
+                    name: stockName,
+                    type:'line',
+                    smooth:true,
+                    symbol: 'none',
+                    sampling: 'average',
+                    itemStyle: {
+                        normal: {
+                            color: 'rgb(255, 70, 131)'
+                        }
+                    },
+                    areaStyle: {
+                        normal: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                offset: 0,
+                                color: 'rgb(255, 158, 68)'
+                            }, {
+                                offset: 1,
+                                color: 'rgb(255, 70, 131)'
+                            }])
+                        }
+                    },
+                    data: tsDataList.reverse()
+                }
+            ]
+        };
+        myTimeSharingChart.setOption(timeSharingOption);
+    }
+
+    showCharts();
+</script>
+</html>

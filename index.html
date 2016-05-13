@@ -4,33 +4,18 @@
     <meta charset="UTF-8">
     <title>Quotation</title>
     <style type="text/css">
-        #candlechart{
-            height:250px;
-            margin-bottom:1px;
-            padding-bottom:0;
-            border-bottom-width:0
-        }
-
-        #volume{
-            height:125px;
-            margin-bottom:1px;
-            padding:1px 10px;
-            border-width:0 1px;
-        }
-
-        #container{
-            width: 1000px;
-            height: 600px;
+        #timesharing{
+            width: 800px;
+            height: 400px;
         }
     </style>
     <script src="jquery-2.2.3.js"></script>
+    <script src="highstock.src.js"></script>
 </head>
 
 
 <body>
     <div id="container">
-        <div id="candlechart"></div>
-        <div id="volume"></div>
         <div id="timesharing"></div>
     </div>
 
@@ -41,272 +26,477 @@
         });
     </script>
 </body>
-<script src="echarts.min.js"></script>
 <script type="application/javascript">
-    var tsTimeList, tsDataList, candleTimeList, candleDataList, candleVolumeList, stockName, stockNumber,
-            price_max, price_min;
+    var tsTimeList, tsDataList, tsData, stockName, stockCode,
+            price_max, price_min, pre_close, quotationData;
 
     tsTimeList = new Array();
     tsDataList = new Array();
-    candleTimeList = new Array();
-    candleDataList = new Array();
-    candleVolumeList = new Array();
+    tsData = new Array();
+    quotationData = new Array();
 
-    stockNumber = '600490';
+    stockCode = '600490';
     stockName = '鹏欣资源';
-    pre_close = 7.13;
+    pre_close = 6.69;
 
     price_max = Math.ceil(pre_close * 1.1 * 100) / 100;
     price_min = Math.floor(pre_close * 0.9 * 100) / 100;
 
+    var yesterdayClose = pre_close;
+
     function getData(){
         //Data preparing
         //get data
-        var tickJsonURL, kJsonURL, jsonData, candleDataJson;
+        var tickJsonURL, quotationData;
 
-
-        tickJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_ticks.json';
-        kJsonURL = 'http://localhost:63342/quotation/' + stockNumber + '_k.json';
-
-        //Candle Chart
-        $.getJSON(kJsonURL,
-                function(data){
-
-                    jsonData = eval(data);
-                    candleTimeList = jsonData.index;
-                    candleDataJson = jsonData.data;
-
-                    for(var i=0;i<candleDataJson.length;i++){
-                        candleDataList.push([candleDataJson[i][0],
-                            candleDataJson[i][2],
-                            candleDataJson[i][3],
-                            candleDataJson[i][1]]);
-                        candleVolumeList.push(candleDataJson[i][4]);
-                    }
-                }
-        );
+        tickJsonURL = 'http://localhost:63342/quotation/' + stockCode + '_ticks.json';
 
         //Time Sharing Chart
         $.getJSON(tickJsonURL,
-                function(data){
-                    jsonData = eval(data);
-                    for(var i=0;i<jsonData.length;i++){
-                        tsDataList.push(jsonData[i].price);
-                        tsTimeList.push(jsonData[i].time);
+            function(data){
+                quotationData = data.data.reverse();
+
+                var timeString = '';
+                var UTCTime, minLastFlag, minCurFlag, minTotalVol,
+                minTotalPrice, minLastPrice, minTickCount;
+
+                minTickCount = 0;
+                minTotalVol = 0;
+                minTotalPrice = 0;
+                minLastFlag = Number(quotationData[0][0].substr(3,2));
+
+                for(var i=0;i<quotationData.length;i++){
+                    timeString = quotationData[i][0];
+
+                    minCurFlag = Number(timeString.substr(3,2));
+                    minTickCount = minTickCount + 1;
+                    minTotalVol = minTotalVol + quotationData[i][4];
+                    minTotalPrice = minTotalPrice + quotationData[i][1];
+                    minLastPrice = quotationData[i][1];
+
+                    if (minCurFlag !== minLastFlag){
+                        //A new minute, write down the last one
+                        UTCTime = Number(Date.UTC(
+                                2016,
+                                5,
+                                12,
+                                Number(timeString.substr(0,2)),
+                                minLastFlag));
+
+                        tsData.push([UTCTime, minLastPrice,
+                            minTotalVol, minTotalPrice/minTickCount]);
+
+                        minLastFlag = minCurFlag;
                     }
                 }
-        );
 
-//        return {
-//            'tsTime': tsTimeList.reverse(),
-//            'tsData': tsDataList.reverse(),
-//            'candleTime': candleTimeList.reverse(),
-//            'candleData': candleDataList.reverse(),
-//            'stockNumber': stockNumber,
-//            'stockName': stockName
-//        }
+            }
+        );
     }
 
     function showCharts() {
         getData();
 
-        alert(candleTimeList);
+        alert(tsData);
 
-        // Candle Chart
-        var kOption = {
+        var last_dataTime=new Date(2016,5,12,15);
+        // Create the chart
+        var am_startTime=new Date(last_dataTime);
+        am_startTime.setHours(9, 30, 0, 0);
+        var am_startTimeUTC=Number(Date.UTC(am_startTime.getFullYear(),am_startTime.getMonth(),am_startTime.getDate(),am_startTime.getHours(),am_startTime.getMinutes()));
+
+        var am_midTime=new Date(last_dataTime);
+        am_midTime.setHours(10, 30, 0, 0);
+        var am_midTimeUTC=Number(Date.UTC(am_midTime.getFullYear(),am_midTime.getMonth(),am_midTime.getDate(),am_midTime.getHours(),am_midTime.getMinutes()));
+
+        //股票交易早上最后的时间
+        var am_lastTime=new Date(last_dataTime);
+        am_lastTime.setHours(11, 30, 0, 0);
+        var am_lastTimeUTC=Number(Date.UTC(am_lastTime.getFullYear(),am_lastTime.getMonth(),am_lastTime.getDate(),am_lastTime.getHours(),am_lastTime.getMinutes()));
+        //股票交易下午最后的时间
+        var pm_startTime=new Date(last_dataTime);
+        pm_startTime.setHours(13, 1, 0, 0);
+        var pm_startTimeUTC=Number(Date.UTC(pm_startTime.getFullYear(),pm_startTime.getMonth(),pm_startTime.getDate(),pm_startTime.getHours(),pm_startTime.getMinutes()));
+
+        var pm_midTime=new Date(last_dataTime);
+        pm_midTime.setHours(14, 0, 0, 0);
+        var pm_midTimeUTC=Number(Date.UTC(pm_midTime.getFullYear(),pm_midTime.getMonth(),pm_midTime.getDate(),pm_midTime.getHours(),pm_midTime.getMinutes()));
+
+        var pm_lastTime=new Date(last_dataTime);
+        pm_lastTime.setHours(15, 0, 0, 0);
+        var pm_lastTimeUTC=Number(Date.UTC(pm_lastTime.getFullYear(),pm_lastTime.getMonth(),pm_lastTime.getDate(),pm_lastTime.getHours(),pm_lastTime.getMinutes()));
+        //常量本地化
+        Highcharts.setOptions({
+            global : {
+                useUTC : true
+            }
+        });
+
+        var avg_pxyAxisMin;
+        var avg_pxyAxisMax;
+        var percentageyAxisMin;
+        var percentageyAxisMax;
+        var volume_yAxisMin;
+        var volume_yAxisMax;
+        var red="#ff0000";
+        var blue="#00a800";
+        var columnColor = red;
+
+        for (var i=0; i < tsData.length; i += 1) {
+            var dateUTC = tsData[i][0];
+            var business_amount=tsData[i][2];
+
+            if(i==0){//第一笔的 红绿柱 判断依据是根据 今天开盘价与昨日收盘价比较
+
+                avg_pxyAxisMin=tsData[i][3];
+                avg_pxyAxisMax=tsData[i][3];
+                percentageyAxisMin=Number(100*(tsData[i][1]/yesterdayClose-1));
+                percentageyAxisMax=Number(100*(tsData[i][1]/yesterdayClose-1));
+
+            }
+            else {
+                //除了第一笔，其它都是  返回的 last_px 与前一个对比
+                if(tsData[i-1][1]-tsData[i][1]>0){
+                    columnColor = blue;
+                }
+                business_amount=tsData[i][2]-tsData[i-1][2];
+            }
+
+            avg_pxyAxisMin=avg_pxyAxisMin>tsData[i][1]?tsData[i][1]:avg_pxyAxisMin;
+            avg_pxyAxisMax=avg_pxyAxisMax>tsData[i][1]?avg_pxyAxisMax:tsData[i][1];
+            percentageyAxisMin=percentageyAxisMin>Number(100*(tsData[i][1]/yesterdayClose-1))?Number(100*(tsData[i][1]/yesterdayClose-1)):percentageyAxisMin;
+            percentageyAxisMax=percentageyAxisMax>Number(100*(tsData[i][1]/yesterdayClose-1))?percentageyAxisMax:Number(100*(tsData[i][1]/yesterdayClose-1));
+            volume_yAxisMin=volume_yAxisMin>business_amount?business_amount:volume_yAxisMin;
+            volume_yAxisMax=volume_yAxisMax>business_amount?volume_yAxisMax:business_amount;
+        }
+
+        $('#timesharing').highcharts('StockChart', {
+            chart: {
+                panning: false,
+                zoomType: 'none',
+                pinchType: 'none',
+                renderTo: "line_map",
+                margin: [25, 25, 25, 25],
+                spacing: [0, 0, 0, 0],
+                plotBorderColor: '#3C94C4',
+                plotBorderWidth: 0,
+                events: {
+                    load: function () {
+                        x = tsData[tsData.length - 1][0];
+                        y = tsData[tsData.length - 1][1];
+                        var chart = $('#timesharing').highcharts();           // Highcharts构造函数
+                        //基准线
+                        chart.yAxis[0].addPlotLine({           //在x轴上增加
+                            value: yesterdayClose,                           //在值为2的地方
+                            width: 0.1,                           //标示线的宽度为2px
+                            color: '#FFA500',                  //标示线的颜色
+                            zIndex: 1001
+                        });
+                        chart.xAxis[0].removePlotBand("plotBand-x");
+                        chart.xAxis[0].addPlotBand({
+                            borderColor: '#BEBEBE',
+                            borderWidth: 0.1,
+                            color: '#BEBEBE',
+                            from: tsData[tsData.length - 1][0] - 0.000001,//,Date.UTC(2015, 3, 27,10,50),
+                            to: tsData[tsData.length - 1][0] + 0.000001,//Date.UTC(2015, 3, 27,10,51),
+                            label: {
+                                useHTML: true,
+                                text: '<span class="value" style="font-size:10px;background-color:rgba(0,0,0,.6); color:#fff; height:15px; line-height:15px; padding:0 5px;">' + Highcharts.dateFormat('%H:%M ', tsData[tsData.length - 1][0]) + '</span>',
+                                textAlign: 'top',
+                                y: 5,
+                                x: -30
+                            },
+                            id: 'plotBand-x',
+                            zIndex: 1001
+                        });
+                        chart.yAxis[0].removePlotBand("plotBand-y0");
+                        chart.yAxis[0].addPlotBand({
+                            borderColor: '#BEBEBE',
+                            borderWidth: 0.1,
+                            color: '#BEBEBE',
+                            from: tsData[tsData.length - 1][1] - 0.0001,//,Date.UTC(2015, 3, 27,10,50),
+                            to: tsData[tsData.length - 1][1] + 0.0001,//Date.UTC(2015, 3, 27,10,51),
+                            label: {
+                                useHTML: true,
+                                style: {         //字体样式
+                                    font: 'normal 8px Verdana, sans-serif'
+                                },
+                                text: '<span class="value" style="font-size:10px;background-color:rgba(0,0,0,.6); color:#fff; height:15px; line-height:15px; padding:0 5px;">' + tsData[tsData.length - 1][1].toFixed(2) + '</span>',
+                                verticalAlign: 'top',
+                                textAlign: 'left',
+                                x: -25,
+                                y: -2
+                            },
+                            id: 'plotBand-y0',
+                            zIndex: 1001
+                        });
+                        chart.yAxis[0].removePlotBand("plotBand-y1");
+                        chart.yAxis[0].addPlotBand({
+                            color: '#BEBEBE',
+                            borderWidth: 0.1,
+                            borderColor: '#BEBEBE',
+                            from: tsData[tsData.length - 1][1] - 0.0001,//,Date.UTC(2015, 3, 27,10,50),
+                            to: tsData[tsData.length - 1][1] + 0.0001,//Date.UTC(2015, 3, 27,10,51),
+                            label: {
+                                useHTML: true,
+                                style: {         //字体样式
+                                    font: 'normal 8px Verdana, sans-serif'
+                                },
+                                text: '<span class="value" style="font-size:10px;background-color:rgba(0,0,0,.6); color:#fff; height:15px; line-height:15px; padding:0 5px;">' + (100 * (tsData[tsData.length - 1][1] / yesterdayClose - 1)).toFixed(2) + "%" + '</span>',
+                                textAlign: 'right',
+                                verticalAlign: 'bottom',
+                                x: 280,
+                                y: -2
+                            },
+                            id: 'plotBand-y1',
+                            zIndex: 1001
+                        });
+
+                    }
+                }
+            },
             title: {
-                text: stockName,
-                left: 'left'
+                text: 'AAPL stock price by minute'
             },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'line'
+            subtitle: {
+                text: 'Using ordinal X axis'
+            },
+            rangeSelector:{
+                enabled: false,
+            },
+            /*导出配置*/
+            exporting: {
+                enabled: false,
+            },
+            /*创建者信息*/
+            credits: {
+                enabled: false,
+            },
+            /*下部时间拖拉选择*/
+            navigator: {
+                enabled: false,
+                /*关闭时间选择*/
+                baseseries: 10
+            },
+            scrollbar: {
+                enabled: false /*关闭下方滚动条*/
+            },
+            xAxis:{
+                showFirstLabel: true,
+                showLastLabel:true,
+                scrollbar:{enabled:true},
+                labels: {
+                    // staggerLines:5
+                    style: {         //字体样式
+                        font: 'normal 8px Verdana, sans-serif'
+                    },
+                    formatter:function(){
+                        var returnTime=Highcharts.dateFormat('%H:%M ', this.value);
+                        if(returnTime=="11:30 ")
+                        {
+                            return "11:30/13:00";
+                        }
+                        return returnTime;
+                    },
                 },
-                formatter: function (params) {
-                    var res = params[0].seriesName + ' ' + params[0].name;
-                    res += '<br/>  开盘 : ' + params[0].value[0] + '  最高 : ' + params[0].value[3];
-                    res += '<br/>  收盘 : ' + params[0].value[1] + '  最低 : ' + params[0].value[2];
-                    return res;
-                }
+                tickPositioner:function(){
+                    var positions=[am_startTimeUTC,am_midTimeUTC,am_lastTimeUTC,pm_midTimeUTC,pm_lastTimeUTC];
+                    return positions;
+                },
+                gridLineWidth: 1,
             },
-            grid: {
-                x:80,
-                y:40,
-                x2:20,
-                y2:50
+            yAxis: [{
+                opposite: false,//是否把它显示到另一边（右边）
+                labels: {
+                    style: {         //字体样式
+                        font: 'normal 8px Verdana, sans-serif'
+                    },
+                    overflow: 'justify',
+                    align: 'right',
+                    x: -3,
+                    y:5,
+                    formatter:function(){
+                        //最新价  px_last/preclose昨收盘-1
+                        return (this.value).toFixed(2);
+                    }
+                },
+                title: {
+                    text: ''
+                },
+                top:'0%',
+                height: '65%',
+                lineWidth: 1,
+                showFirstLabel: true,
+                showLastLabel:true,
+
+                tickPositioner:function(){    //以yesterdayClose为界限，统一间隔值，从 最小到最大步进
+                    positions = [],
+                            tick = Number((avg_pxyAxisMin)),
+                            increment = Number(((avg_pxyAxisMax - avg_pxyAxisMin) / 5));
+                    var tickMin=Number((avg_pxyAxisMin)),tickMax=Number((avg_pxyAxisMax));
+                    if(0==tsData.length){//还没有数据时，yesterdayClose 的幅值 在 -1% - 1%上下浮动
+                        tickMin=0.99*yesterdayClose;
+                        tickMax=1.01*yesterdayClose;
+                    }else if(0==increment){//有数据了  但是数据都是一样的幅值
+                        if(yesterdayClose>Number(avg_pxyAxisMin)){
+                            tickMin=Number(avg_pxyAxisMin);
+                            tickMax=2*yesterdayClose-Number(avg_pxyAxisMin);
+                        }else if(yesterdayClose<Number(avg_pxyAxisMin)){
+                            tickMax=Number(avg_pxyAxisMax);
+                            tickMin=yesterdayClose-(Number(avg_pxyAxisMax)-yesterdayClose);
+                        }else{
+                            tickMin=0.99*yesterdayClose;
+                            tickMax=1.01*yesterdayClose;
+                        }
+                    }else if(avg_pxyAxisMin-yesterdayClose<0&&avg_pxyAxisMax-yesterdayClose>0){//最小值在昨日收盘价下面，最大值在昨日收盘价上面
+                        var limit=Math.max(Math.abs(avg_pxyAxisMin-yesterdayClose),Math.abs(avg_pxyAxisMax-yesterdayClose));
+                        tickMin=yesterdayClose-limit;
+                        tickMax=yesterdayClose+limit;
+                    }else if(avg_pxyAxisMin>yesterdayClose&&avg_pxyAxisMax>yesterdayClose){//最小最大值均在昨日收盘价上面
+                        tickMax=avg_pxyAxisMax;
+                        tickMin=yesterdayClose-(tickMax-yesterdayClose);
+
+                    }else if(avg_pxyAxisMin<yesterdayClose&&avg_pxyAxisMax<yesterdayClose){//最小最大值均在昨日收盘价下面
+                        tickMin=avg_pxyAxisMin;
+                        tickMax=yesterdayClose+(yesterdayClose-tickMin);
+                    }
+                    if(tickMax>2*yesterdayClose){//数据超过100%了
+                        tickMax=2*yesterdayClose;
+                        tickMin=0;
+                    }
+                    var interval=Number(tickMax-yesterdayClose)/10;
+                    tickMax+=interval;
+                    tickMin=yesterdayClose-(tickMax-yesterdayClose);
+                    increment=(tickMax-yesterdayClose)/3;
+                    tick=tickMin;
+                    var i=0;
+                    for (tick;i ++ <7  ; tick += increment) {
+                        positions.push(Number(tick));
+                    }
+
+                    return positions;
+                },
             },
-            xAxis: {
-                type: 'category',
-                data: candleTimeList.reverse(),
-                scale: true,
-                boundaryGap : false,
-                axisLine: {onZero: false},
-                splitLine: {show: false}
-            },
-            yAxis: {
-                scale: true,
-                splitArea: {
-                    show: true
-                }
-            },
-            dataZoom : {
-                y: '88%',
-                show : true,
-                start : 50,
-                end : 100
-            },
-            series: [
                 {
-                    name: stockName,
-                    type: 'candlestick',
-                    itemStyle: {
-                        normal: {
-                            color: 'red',           // 阳线填充颜色
-                            color0: 'lightgreen',   // 阴线填充颜色
-                            lineStyle: {
-                                width: 2,
-                                color: 'orange',    // 阳线边框颜色
-                                color0: 'green'     // 阴线边框颜色
-                            }
+                    opposite: true,//是否把它显示到另一边（右边）
+                    showFirstLabel: true,
+                    showLastLabel:true,
+                    labels: {
+                        overflow: 'justify',
+                        style: {         //字体样式
+                            font: 'normal 8px Verdana, sans-serif'
                         },
-                        emphasis: {
-                            color: 'black',         // 阳线填充颜色
-                            color0: 'white'         // 阴线填充颜色
+                        align: 'right',
+                        x: 25,
+                        y:15,
+                        formatter:function(){//最新价  px_last/preclose昨收盘-1
+                            return (100*(this.value/yesterdayClose-1)).toFixed(2)+"%";
                         }
                     },
-                    data: candleDataList.reverse()
-                }
-            ]
-        };
-        var myCandleChart = echarts.init(document.getElementById('candlechart'));
-        myCandleChart.setOption(kOption);
-
-        var vOption = {
-            tooltip : {
-                trigger: 'axis',
-                showDelay: 0             // 显示延迟，添加显示延迟可以避免频繁切换，单位ms
-            },
-            toolbox: {
-                show : false
-
-            },
-            dataZoom : {
-                show : false,
-                start : 50,
-                end : 100
-            },
-            grid: {
-                x: 70,
-                y: 10,
-                x2:6,
-                y2:30
-            },
-            xAxis : [
+                    title: {
+                        text: ''
+                    },
+                    lineWidth: 1,
+                    top:'0%',
+                    height: '65%',
+                    gridLineWidth: 1,
+                    tickPositioner:function(){
+                        return positions;
+                    }
+                },
                 {
-                    type : 'category',
-                    position:'top',
-                    boundaryGap : true,
-                    axisLabel:{show:false},
-                    axisTick: {onGap:false},
-                    splitLine: {show:false},
-                    data : candleTimeList
-                }
-            ],
-            yAxis : [
-                {
-                    type : 'value',
-                    scale:true,
-                    splitNumber:2,
-                    boundaryGap: [0, 0.05],
-                    axisLabel: {
-                        formatter: function (v) {
-                            return Math.round(v/10000) + ' 万'
+                    opposite: false,//是否把它显示到另一边（右边）
+                    labels: {
+                        overflow: 'justify',
+                        style: {         //字体样式
+                            font: 'normal 8px Verdana, sans-serif'
+                        },
+                        align: 'right',
+                        x: -3,
+                        y:5,
+                        formatter:function(){
+                            if(this.value>1000000000){
+                                return Number((this.value/1000000000).toFixed(2))+"G";
+                            }else if(this.value>1000000){
+                                return Number((this.value/1000000).toFixed(2))+"M";
+                            }else if(this.value>1000){
+                                return Number((this.value/1000).toFixed(2))+"K";
+                            }else{
+                                return Number(this.value.toFixed(2));
+                            }
                         }
                     },
-                    splitArea : {show : true}
-                }
-            ],
-            series : [
+                    title: {
+                        text: ''
+                    },
+                    top: '70%',
+                    height: '30%',
+                    width:'100%',
+                    offset: 0,
+                    lineWidth: 1,
+                    showFirstLabel: true,
+                    showLastLabel:true,
+                    tickPositioner:function(){
+                        var positions = [],
+                                tickMax=volume_yAxisMax,
+                                tickMin=volume_yAxisMin,
+                                tick = 0,
+                                increment = 0;
+                        var limit=tickMax/2;
+                        tickMax+=limit;
+                        increment=tickMax/2;
+                        tick=0;
+                        for (tick; tick  <= tickMax; tick += increment) {
+                            positions.push(Number(tick.toFixed(2)));
+                            if(increment==0){
+                                break;
+                            }
+                        }
+                        return positions;
+                    }
+                }],
+            series : [{
+                name : stockName,
+                data : tsData,
+                type : 'areaspline',
+                tooltip : {
+                    valueDecimals : 2
+                },
+                fillColor : {
+                    linearGradient : {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops : [
+                        [0, Highcharts.getOptions().colors[0]],
+                        [1, Highcharts.Color(Highcharts.getOptions().colors[0]).setOpacity(0).get('rgba')]
+                    ]
+                },
+                yAxis:0
+            },
                 {
-                    name:stockName,
-                    type:'bar',
-                    symbol: 'none',
-                    data:candleVolumeList.reverse()
-                }
-            ]
-        };
-        var myVolumeChart = echarts.init(document.getElementById('volume'));
-        myVolumeChart.setOption(vOption);
+                    name : stockName,
+                    data : tsData,
+                    type : 'scatter',
+                    cursor:'pointer',
+                    onSeries : 'candlestick',
+                    color:'transparent',
+                    tooltip : {
+                        valueDecimals : 2
+                    },
+                    style:{
+                        fontSize: '0px',
+                        fontWeight: '0',
+                        textAlign: 'center'
+                    },
+                    zIndex:-1000,
+                    yAxis:1
+                }]
+        });
 
-        myCandleChart.group = 'kv_group';
-        myVolumeChart.group = 'kv_group';
 
-        echarts.connect('kv_group');
-
-        //Time sharing chart
-//        var myTimeSharingChart = echarts.init(document.getElementById('timesharing'));
-//        var timeSharingOption = {
-//            tooltip : {
-//                trigger: 'axis'
-//            },
-//
-//            toolbox: {},
-//            xAxis : [
-//                {
-//                    boundaryGap : false,
-//                    data : tsTimeList.reverse(),
-//                    splitNumber: 4
-//                }
-//            ],
-//            yAxis: [{
-//                scale: true,
-//                splitArea: {
-//                    show: true
-//                },
-//                boundaryGap: [0, '100%'],
-//                min: price_min,
-//                max: price_max,
-//                splitNumber: 8
-//            },
-//            {
-//                axisLabel: {
-//                    formatter: function (val) {
-//                        return (val - pre_close) / 100 + '%';
-//                    }
-//                },
-//                min: price_min,
-//                max: price_max
-//            }
-//            ],
-//            series : [
-//                {
-//                    name: stockName,
-//                    type:'line',
-//                    smooth:true,
-//                    symbol: 'none',
-//                    sampling: 'average',
-//                    itemStyle: {
-//                        normal: {
-//                            color: 'rgb(255, 70, 131)'
-//                        }
-//                    },
-//                    areaStyle: {
-//                        normal: {
-//                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
-//                                offset: 0,
-//                                color: 'rgb(255, 158, 68)'
-//                            }, {
-//                                offset: 1,
-//                                color: 'rgb(255, 70, 131)'
-//                            }])
-//                        }
-//                    },
-//                    data: tsDataList.reverse()
-//                }
-//            ]
-//        };
-//        myTimeSharingChart.setOption(timeSharingOption);
     }
 </script>
 </html>
